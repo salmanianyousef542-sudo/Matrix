@@ -1,47 +1,45 @@
-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; }
-.container { max-width: 800px; }
-
-.card { border: none; border-radius: 15px; overflow: hidden; }
-.card-header { font-weight: bold; }
-.chat-messages { height: 400px; overflow-y: auto; padding: 20px; background: #f8f9fa; }
+body { margin: 0; font-family: 'Segoe UI', sans-serif; }
+.vh-100 { height: 100vh; }
+.max-w-400 { max-width: 400px; }
+#chat-section { display: flex; flex-direction: column; }
+.header { position: sticky; top: 0; z-index: 10; }
+#messages { background: #f8f9fa; }
 .message { 
     margin: 10px 0; 
-    padding: 10px 15px; 
+    padding: 12px 16px; 
     background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); 
     color: white; 
     border-radius: 20px 20px 5px 20px; 
-    max-width: 70%; 
+    max-width: 80%; 
     word-wrap: break-word; 
     animation: fadeIn 0.3s ease-in; 
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     position: relative;
 }
-.message strong { color: #fff; }
-.message small { opacity: 0.8; display: block; margin-top: 5px; }
+.reply-thread { 
+    margin-right: 3rem;  /* فاصله برای reply */
+    border-right: 3px solid #007bff;  /* خط thread */
+    padding-right: 12px; 
+    background: rgba(0,123,255,0.05); 
+    border-radius: 10px;
+}
+.highlighted { 
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important; 
+    transform: scale(1.02); 
+    transition: all 0.3s ease;
+}
 .reply-btn { 
     position: absolute; top: 5px; right: 5px; font-size: 0.8em; 
     background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); 
     color: white; padding: 2px 8px; border-radius: 10px;
 }
 .reply-btn:hover { background: rgba(255,255,255,0.3); }
-.reply-thread {
-    border-right: 2px solid #007bff;  /* خط عمودی برای thread (RTL) */
-    padding-right: 15px;  
-    margin-right: 10px;
-    background: rgba(0,123,255,0.05);  
-    border-radius: 10px;
-}
-.highlighted {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;  
-    transform: scale(1.02);  
-    transition: all 0.3s ease;
-}
-
+.message strong { color: #fff; }
+.message small { opacity: 0.8; display: block; margin-top: 5px; }
+.input-group .form-control { border-radius: 25px 0 0 25px; }
+.btn { border-radius: 25px; transition: all 0.3s; }
+.btn:hover { transform: translateY(-2px); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 #messages::-webkit-scrollbar { width: 6px; }
 #messages::-webkit-scrollbar-thumb { background: #007bff; border-radius: 3px; }
-
-.input-group .form-control { border-radius: 25px 0 0 25px; }
-.btn { border-radius: 25px; transition: all 0.3s; }
-.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-.alert { margin: 10px 0; border-radius: 10px; }
+@media (max-width: 576px) { .message { max-width: 90%; } }

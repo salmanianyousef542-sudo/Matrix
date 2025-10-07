@@ -15,7 +15,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const database = firebase.database();
 
-// دیکشنری ترجمه خطاهای Firebase به پارسی (رایج‌ترین‌ها)
+// دیکشنری ترجمه خطاهای Firebase به پارسی
 const errorTranslations = {
     'auth/invalid-email': 'فرمت ایمیل نامعتبر است.',
     'auth/user-not-found': 'کاربر با این ایمیل یافت نشد.',
@@ -25,15 +25,15 @@ const errorTranslations = {
     'auth/too-many-requests': 'تعداد درخواست‌ها زیاد است. بعداً امتحان کنید.',
     'auth/network-request-failed': 'مشکل اتصال به اینترنت.',
     'auth/operation-not-allowed': 'عملیات مجاز نیست. با مدیر تماس بگیرید.',
-    'auth/invalid-api-key': 'کلید API نامعتبر است.'  // برای خطای قبلی
+    'auth/invalid-api-key': 'کلید API نامعتبر است.'
 };
 
 // تابع ترجمه خطا
 function translateError(error) {
-    return errorTranslations[error.code] || error.message;  // اگر ترجمه نبود، انگلیسی بده
+    return errorTranslations[error.code] || error.message;
 }
 
-// عناصر DOM (همون قبلی + برای reply)
+// عناصر DOM
 const authSection = document.getElementById('auth-section');
 const chatSection = document.getElementById('chat-section');
 const nameInput = document.getElementById('name');
@@ -48,22 +48,23 @@ const sendBtn = document.getElementById('send-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const userNameSpan = document.getElementById('user-name');
 
-// متغیرهای جدید برای reply
+// متغیرهای reply
 let currentReplyTo = null;  // {id: messageId, name: senderName}
 let messagesListener = null;
 
-// setup listener پیام‌ها (با parentId برای reply)
+// setup listener پیام‌ها (با reply و thread)
 function setupMessagesListener() {
     if (messagesListener) database.ref('messages').off('child_added', messagesListener);
     messagesListener = database.ref('messages').on('child_added', (snapshot) => {
         const msg = snapshot.val();
-        const msgId = snapshot.key;  // کلید unique در Firebase
+        const msgId = snapshot.key;
         const div = document.createElement('div');
         div.className = 'message';
-        // indentation برای replies
-        const indent = msg.parentId ? 'ml-4' : '';  // Bootstrap margin-left
+        div.setAttribute('data-id', msgId);  // برای highlight
+        const isReply = msg.parentId;
+        const indentClass = isReply ? 'reply-thread' : '';
         div.innerHTML = `
-            <div class="${indent}">
+            <div class="${indentClass}">
                 <strong>${msg.name}:</strong> ${msg.text} 
                 <small>(${msg.timestamp})</small>
                 <button class="btn btn-sm btn-outline-secondary reply-btn" data-id="${msgId}" data-name="${msg.name}">پاسخ</button>
@@ -75,10 +76,17 @@ function setupMessagesListener() {
         // event listener برای دکمه reply
         const replyBtn = div.querySelector('.reply-btn');
         replyBtn.addEventListener('click', () => {
+            // پاک کردن highlight قبلی
+            if (currentReplyTo) {
+                const prevReplyDiv = document.querySelector(`[data-id="${currentReplyTo.id}"]`);
+                if (prevReplyDiv) prevReplyDiv.classList.remove('highlighted');
+            }
             currentReplyTo = { id: msgId, name: msg.name };
             messageInput.placeholder = `پاسخ به ${msg.name}...`;
             messageInput.focus();
-            // اختیاری: دکمه cancel reply اضافه کن
+            div.classList.add('highlighted');  // highlight این پیام
+
+            // دکمه لغو
             if (!document.getElementById('cancel-reply')) {
                 const cancelBtn = document.createElement('button');
                 cancelBtn.id = 'cancel-reply';
@@ -87,6 +95,8 @@ function setupMessagesListener() {
                 cancelBtn.addEventListener('click', () => {
                     currentReplyTo = null;
                     messageInput.placeholder = 'پیام خود را بنویسید...';
+                    div.classList.remove('highlighted');
+                    cancelBtn.remove();
                 });
                 sendBtn.parentNode.insertBefore(cancelBtn, sendBtn.nextSibling);
             }
@@ -94,7 +104,7 @@ function setupMessagesListener() {
     });
 }
 
-// ثبت‌نام (با ترجمه خطا)
+// ثبت‌نام
 signupBtn.addEventListener('click', () => {
     const name = nameInput.value.trim();
     const email = emailInput.value.trim();
@@ -105,13 +115,13 @@ signupBtn.addEventListener('click', () => {
         .then((userCredential) => {
             userCredential.user.updateProfile({ displayName: name });
             database.ref('users/' + userCredential.user.uid).set({ name: name });
-            errorMsg.textContent = '';  // پاک کردن خطا
+            errorMsg.textContent = '';
             showChat(userCredential.user);
         })
         .catch((error) => errorMsg.textContent = translateError(error));
 });
 
-// ورود (با ترجمه خطا)
+// ورود
 loginBtn.addEventListener('click', () => {
     const email = emailInput.value.trim();
     const password = passwordInput.value;
@@ -131,15 +141,14 @@ function showChat(user) {
     chatSection.style.display = 'block';
     userNameSpan.textContent = user.displayName || 'کاربر';
     messagesDiv.innerHTML = '';
-    currentReplyTo = null;  // reset reply
+    currentReplyTo = null;
     messageInput.placeholder = 'پیام خود را بنویسید...';
-    // پاک کردن cancel btn اگر وجود داره
     const cancelBtn = document.getElementById('cancel-reply');
     if (cancelBtn) cancelBtn.remove();
     setupMessagesListener();
 }
 
-// ارسال پیام (با reply و ترجمه خطا)
+// ارسال پیام (با reply)
 sendBtn.addEventListener('click', () => {
     const text = messageInput.value.trim();
     if (!text) return;
@@ -151,7 +160,7 @@ sendBtn.addEventListener('click', () => {
         name: user.displayName,
         text: text,
         timestamp: new Date().toLocaleString('fa-IR'),
-        parentId: currentReplyTo ? currentReplyTo.id : null  // برای reply
+        parentId: currentReplyTo ? currentReplyTo.id : null
     };
 
     database.ref('messages').push(messageData)
@@ -161,14 +170,15 @@ sendBtn.addEventListener('click', () => {
             messageInput.placeholder = 'پیام خود را بنویسید...';
             const cancelBtn = document.getElementById('cancel-reply');
             if (cancelBtn) cancelBtn.remove();
+            // پاک کردن highlightها
+            document.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
         })
         .catch((error) => {
-            // نمایش خطا در بخش چت (جدید)
             const errorDiv = document.createElement('div');
             errorDiv.className = 'alert alert-danger';
             errorDiv.textContent = translateError(error);
             messagesDiv.appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 5000);  // پاک کردن بعد ۵ ثانیه
+            setTimeout(() => errorDiv.remove(), 5000);
         });
 });
 
@@ -194,7 +204,6 @@ auth.onAuthStateChanged((user) => {
     } else {
         authSection.style.display = 'block';
         chatSection.style.display = 'none';
-        setupMessagesListener();  // listener رو نگه دار برای realtime
     }
 });
 

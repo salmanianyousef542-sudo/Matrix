@@ -1,12 +1,13 @@
-// Firebase Config – جایگزین با config واقعی
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "AIzaSy...[کلید واقعی]",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBo-OGrEBEuRG36X6go0HNkdAJBKzGmmiA",
+  authDomain: "mychatapp2-b15ca.firebaseapp.com",
+  databaseURL: "https://mychatapp2-b15ca-default-rtdb.firebaseio.com",
+  projectId: "mychatapp2-b15ca",
+  storageBucket: "mychatapp2-b15ca.firebasestorage.app",
+  messagingSenderId: "1073554057549",
+  appId: "1:1073554057549:web:c62dc2b667148ea6d32f04",
+  measurementId: "G-HQGJZR8DEW"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -203,3 +204,4 @@ auth.onAuthStateChanged((user) => {
 
 // listener اولیه
 setupMessagesListener();
+

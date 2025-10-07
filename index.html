@@ -1,91 +1,38 @@
-﻿<!DOCTYPE html>
-<html lang="fa">
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>پیام‌رسان من</title>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
-    <style>
-        body {
-            font-family: sans-serif;
-            text-align: center;
-            direction: rtl;
-        }
-
-        #chat-box {
-            border: 1px solid #ccc;
-            height: 300px;
-            overflow-y: scroll;
-            margin: 10px;
-            padding: 10px;
-        }
-
-        #message {
-            width: 70%;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پیام‌رسان ساده</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
-    <h2>چت آنلاین</h2>
-    <div id="register">
-        <input id="username" placeholder="نام کاربری">
-        <button id="registerBtn">ورود</button>
+    <div id="app">
+        <!-- فرم ثبت‌نام/لاگین -->
+        <div id="auth-section" class="section">
+            <h2>ثبت‌نام یا ورود</h2>
+            <input type="text" id="name" placeholder="نام شما" required>
+            <input type="email" id="email" placeholder="ایمیل" required>
+            <input type="password" id="password" placeholder="رمز عبور" required>
+            <button id="signup-btn">ثبت‌نام</button>
+            <button id="login-btn">ورود</button>
+            <p id="error-msg" style="color: red;"></p>
+        </div>
+
+        <!-- بخش چت -->
+        <div id="chat-section" class="section" style="display: none;">
+            <h2>چت آنلاین</h2>
+            <div id="messages"></div>
+            <input type="text" id="message-input" placeholder="پیام خود را بنویسید...">
+            <button id="send-btn">ارسال</button>
+            <button id="logout-btn">خروج</button>
+            <p>خوش آمدید، <span id="user-name"></span>!</p>
+        </div>
     </div>
-
-    <div id="chat" style="display:none;">
-        <div id="chat-box"></div>
-        <input id="message" placeholder="پیام...">
-        <button id="sendBtn">ارسال</button>
-    </div>
-
-    <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "اینجا مقدار API KEY پروژه‌ات رو بذار",
-      authDomain: "اینجا مقدار AUTH DOMAIN پروژه‌ات رو بذار",
-      databaseURL: "اینجا مقدار DATABASE URL پروژه‌ات رو بذار",
-      projectId: "اینجا مقدار PROJECT ID پروژه‌ات رو بذار",
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    const usernameInput = document.getElementById("username");
-    const registerBtn = document.getElementById("registerBtn");
-    const chatBox = document.getElementById("chat-box");
-    const messageInput = document.getElementById("message");
-    const sendBtn = document.getElementById("sendBtn");
-
-    let username = null;
-
-    registerBtn.onclick = () => {
-      username = usernameInput.value.trim();
-      if (username === "") return alert("نام کاربری الزامی است");
-      document.getElementById("register").style.display = "none";
-      document.getElementById("chat").style.display = "block";
-    };
-
-    sendBtn.onclick = () => {
-      const msg = messageInput.value.trim();
-      if (msg === "") return;
-      push(ref(db, "messages"), {
-        name: username,
-        text: msg,
-        time: Date.now()
-      });
-      messageInput.value = "";
-    };
-
-    onChildAdded(ref(db, "messages"), (data) => {
-      const msg = data.val();
-      const div = document.createElement("div");
-      div.textContent = `${msg.name}: ${msg.text}`;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>

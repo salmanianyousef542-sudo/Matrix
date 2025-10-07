@@ -44,58 +44,76 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const userNameSpan = document.getElementById('user-name');
+const onlineCountSpan = document.getElementById('online-count');
+const typingIndicator = document.getElementById('typing-indicator');
 
-// متغیرهای reply
-let currentReplyTo = null;
 let messagesListener = null;
+let currentUser = null;
 
-// setup listener پیام‌ها (با فیکس reply)
+// Presence (کاربران آنلاین)
+function setupPresence() {
+    if (!currentUser) return;
+    const onlineRef = database.ref(`online/${currentUser.uid}`);
+    onlineRef.set(true).onDisconnect().remove();  // پاک کردن موقع خروج
+
+    database.ref('online').on('value', (snapshot) => {
+        const count = snapshot.numChildren();
+        onlineCountSpan.textContent = count;
+    });
+}
+
+// Typing Indicators
+function setupTyping() {
+    if (!currentUser) return;
+    const typingRef = database.ref(`typing/${currentUser.uid}`);
+    let typingTimer;
+
+    messageInput.addEventListener('input', () => {
+        typingRef.set(true);
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            typingRef.set(false);
+        }, 1500);  // ۱.۵ ثانیه بعد از توقف تایپ
+    });
+
+    database.ref('typing').on('value', (snapshot) => {
+        let typingUsers = [];
+        const now = Date.now();
+        snapshot.forEach((child) => {
+            const data = child.val();
+            if (data && (now - data.timestamp) < 1500) {
+                database.ref(`users/${child.key}`).once('value').then((snap) => {
+                    if (snap.exists()) typingUsers.push(snap.val().name);
+                    updateTyping(typingUsers);
+                });
+            }
+        });
+        if (typingUsers.length === 0) updateTyping([]);
+    });
+}
+
+function updateTyping(typingUsers) {
+    if (typingUsers.length > 0) {
+        typingIndicator.textContent = `${typingUsers.join(', ')} داره تایپ می‌کنه...`;
+        typingIndicator.style.display = 'block';
+    } else {
+        typingIndicator.style.display = 'none';
+    }
+}
+
+// setup listener پیام‌ها
 function setupMessagesListener() {
     if (messagesListener) database.ref('messages').off('child_added', messagesListener);
     messagesListener = database.ref('messages').on('child_added', (snapshot) => {
         const msg = snapshot.val();
-        const msgId = snapshot.key;
         const div = document.createElement('div');
         div.className = 'message';
-        div.setAttribute('data-id', msgId);
-        const isReply = msg.parentId;
-        const threadClass = isReply ? 'reply-thread' : '';
         div.innerHTML = `
-            <div class="${threadClass}">
-                <strong>${msg.name}:</strong> ${msg.text} 
-                <small>(${msg.timestamp})</small>
-                <button class="reply-btn" data-id="${msgId}" data-name="${msg.name}">پاسخ</button>
-            </div>
+            <strong>${msg.name}:</strong> ${msg.text} 
+            <small>(${msg.timestamp})</small>
         `;
         messagesDiv.appendChild(div);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-        // event reply (فیکس: highlight و thread)
-        const replyBtn = div.querySelector('.reply-btn');
-        replyBtn.addEventListener('click', () => {
-            // پاک کردن highlight قبلی
-            document.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
-            currentReplyTo = { id: msgId, name: msg.name };
-            messageInput.placeholder = `پاسخ به ${msg.name}...`;
-            messageInput.focus();
-            div.classList.add('highlighted');
-
-            // دکمه لغو (اختیاری)
-            let cancelBtn = document.getElementById('cancel-reply');
-            if (!cancelBtn) {
-                cancelBtn = document.createElement('button');
-                cancelBtn.id = 'cancel-reply';
-                cancelBtn.className = 'btn btn-sm btn-outline-danger ms-1';
-                cancelBtn.textContent = 'لغو';
-                cancelBtn.addEventListener('click', () => {
-                    currentReplyTo = null;
-                    messageInput.placeholder = 'پیام خود را بنویسید...';
-                    document.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
-                    cancelBtn.remove();
-                });
-                sendBtn.parentNode.insertBefore(cancelBtn, sendBtn);
-            }
-        });
     });
 }
 
@@ -132,40 +150,32 @@ loginBtn.addEventListener('click', () => {
 
 // نمایش بخش چت
 function showChat(user) {
+    currentUser = user;
     authSection.classList.add('d-none');
     chatSection.classList.remove('d-none');
     userNameSpan.textContent = user.displayName || 'کاربر';
     messagesDiv.innerHTML = '';
-    currentReplyTo = null;
-    messageInput.placeholder = 'پیام خود را بنویسید...';
-    const cancelBtn = document.getElementById('cancel-reply');
-    if (cancelBtn) cancelBtn.remove();
     setupMessagesListener();
+    setupPresence();
+    setupTyping();
 }
 
-// ارسال پیام (با reply فیکس)
-sendBtn.addEventListener('click', () => {
+// ارسال پیام
+function sendMessage() {
     const text = messageInput.value.trim();
     if (!text) return;
 
-    const user = auth.currentUser;
-    if (!user) return;
+    if (!currentUser) return;
 
     const messageData = {
-        name: user.displayName,
+        name: currentUser.displayName,
         text: text,
-        timestamp: new Date().toLocaleString('fa-IR'),
-        parentId: currentReplyTo ? currentReplyTo.id : null  // فیکس: parentId ست می‌شه
+        timestamp: new Date().toLocaleString('fa-IR')
     };
 
     database.ref('messages').push(messageData)
         .then(() => {
             messageInput.value = '';
-            currentReplyTo = null;
-            messageInput.placeholder = 'پیام خود را بنویسید...';
-            const cancelBtn = document.getElementById('cancel-reply');
-            if (cancelBtn) cancelBtn.remove();
-            document.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
         })
         .catch((error) => {
             const errorDiv = document.createElement('div');
@@ -174,6 +184,16 @@ sendBtn.addEventListener('click', () => {
             messagesDiv.appendChild(errorDiv);
             setTimeout(() => errorDiv.remove(), 5000);
         });
+}
+
+sendBtn.addEventListener('click', sendMessage);
+
+// ارسال با Enter
+messageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
 });
 
 // خروج
@@ -187,8 +207,9 @@ logoutBtn.addEventListener('click', () => {
         }
         messagesDiv.innerHTML = '';
         errorMsg.textContent = '';
-        currentReplyTo = null;
         nameInput.value = emailInput.value = passwordInput.value = '';
+        typingIndicator.style.display = 'none';
+        onlineCountSpan.textContent = '0';
     });
 });
 

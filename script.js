@@ -1,13 +1,13 @@
-﻿// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "AIzaSyBo-OGrEBEuRG36X6go0HNkdAJBKzGmmiA",
-    authDomain: "mychatapp2-b15ca.firebaseapp.com",
-    databaseURL: "https://mychatapp2-b15ca-default-rtdb.firebaseio.com",
-    projectId: "mychatapp2-b15ca",
-    storageBucket: "mychatapp2-b15ca.firebasestorage.app",
-    messagingSenderId: "1073554057549",
-    appId: "1:1073554057549:web:c62dc2b667148ea6d32f04",
-    measurementId: "G-HQGJZR8DEW"
+  apiKey: "AIzaSyBo-OGrEBEuRG36X6go0HNkdAJBKzGmmiA",
+  authDomain: "mychatapp2-b15ca.firebaseapp.com",
+  databaseURL: "https://mychatapp2-b15ca-default-rtdb.firebaseio.com",
+  projectId: "mychatapp2-b15ca",
+  storageBucket: "mychatapp2-b15ca.firebasestorage.app",
+  messagingSenderId: "1073554057549",
+  appId: "1:1073554057549:web:c62dc2b667148ea6d32f04",
+  measurementId: "G-HQGJZR8DEW"
 };
 
 // Initialize Firebase
@@ -104,4 +104,5 @@ logoutBtn.addEventListener('click', () => {
 // چک کردن وضعیت لاگین در لود صفحه
 auth.onAuthStateChanged((user) => {
     if (user) showChat(user);
+
 });

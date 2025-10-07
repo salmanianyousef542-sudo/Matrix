@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پیام‌رسان ساده</title>
+    <title>پیام‌رسان ماتریکس</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -23,7 +23,7 @@
                     </div>
                     <div class="card-body">
                         <input type="text" id="name" class="form-control mb-3" placeholder="نام شما">
-                        <input type="email" id="email" class="form-control mb-3" placeholder="ایمیل">
+                        <input type="email" id="email" class="form-control mb-3" placeholder="ایمیل (ادمین: admin@example.com)">
                         <input type="password" id="password" class="form-control mb-3" placeholder="رمز عبور">
                         <div class="d-grid gap-2">
                             <button id="signup-btn" class="btn btn-success">ثبت‌نام</button>
@@ -41,11 +41,23 @@
                 <div class="card shadow">
                     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                         <h4>چت آنلاین</h4>
-                        <span>خوش آمدید، <strong id="user-name"></strong>!</span>
-                        <button id="logout-btn" class="btn btn-outline-light btn-sm">خروج</button>
+                        <div class="d-flex align-items-center">
+                            <span class="me-3">خوش آمدید، <strong id="user-name"></strong>!</span>
+                            <span id="online-users" class="me-2">کاربران آنلاین: ۰</span>
+                            <div class="form-check form-switch me-2">
+                                <input class="form-check-input" type="checkbox" id="dark-mode-toggle">
+                                <label class="form-check-label text-white" for="dark-mode-toggle">دارک مود</label>
+                            </div>
+                            <button id="export-chat" class="btn btn-outline-light btn-sm me-2">دانلود چت</button>
+                            <button id="logout-btn" class="btn btn-outline-light btn-sm">خروج</button>
+                        </div>
                     </div>
                     <div class="card-body p-0">
+                        <div class="p-2 bg-secondary">
+                            <input type="text" id="search-input" class="form-control" placeholder="جستجو در پیام‌ها...">
+                        </div>
                         <div id="messages" class="chat-messages bg-white"></div>
+                        <div id="typing-indicator" class="p-2 text-muted" style="display: none;"></div>
                     </div>
                     <div class="card-footer">
                         <div class="input-group">

@@ -1,0 +1,38 @@
+﻿<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پیام‌رسان ساده</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- فرم ثبت‌نام/لاگین -->
+        <div id="auth-section" class="section">
+            <h2>ثبت‌نام یا ورود</h2>
+            <input type="text" id="name" placeholder="نام شما" required>
+            <input type="email" id="email" placeholder="ایمیل" required>
+            <input type="password" id="password" placeholder="رمز عبور" required>
+            <button id="signup-btn">ثبت‌نام</button>
+            <button id="login-btn">ورود</button>
+            <p id="error-msg" style="color: red;"></p>
+        </div>
+
+        <!-- بخش چت -->
+        <div id="chat-section" class="section" style="display: none;">
+            <h2>چت آنلاین</h2>
+            <div id="messages"></div>
+            <input type="text" id="message-input" placeholder="پیام خود را بنویسید...">
+            <button id="send-btn">ارسال</button>
+            <button id="logout-btn">خروج</button>
+            <p>خوش آمدید، <span id="user-name"></span>!</p>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -24,7 +24,18 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
     color: white; padding: 2px 8px; border-radius: 10px;
 }
 .reply-btn:hover { background: rgba(255,255,255,0.3); }
-.ml-4 { margin-right: 2rem; }  /* برای RTL، margin-right به جای left */
+.reply-thread {
+    border-right: 2px solid #007bff;  /* خط عمودی برای thread (RTL) */
+    padding-right: 15px;  
+    margin-right: 10px;
+    background: rgba(0,123,255,0.05);  
+    border-radius: 10px;
+}
+.highlighted {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;  
+    transform: scale(1.02);  
+    transition: all 0.3s ease;
+}
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 #messages::-webkit-scrollbar { width: 6px; }

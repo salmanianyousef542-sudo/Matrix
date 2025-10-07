@@ -10,12 +10,11 @@ const firebaseConfig = {
   measurementId: "G-HQGJZR8DEW"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const database = firebase.database();
 
-// دیکشنری ترجمه خطاهای Firebase به پارسی
+// دیکشنری ترجمه خطاها (همون قبلی)
 const errorTranslations = {
     'auth/invalid-email': 'فرمت ایمیل نامعتبر است.',
     'auth/user-not-found': 'کاربر با این ایمیل یافت نشد.',
@@ -28,12 +27,11 @@ const errorTranslations = {
     'auth/invalid-api-key': 'کلید API نامعتبر است.'
 };
 
-// تابع ترجمه خطا
 function translateError(error) {
     return errorTranslations[error.code] || error.message;
 }
 
-// عناصر DOM
+// عناصر DOM (بدون upload)
 const authSection = document.getElementById('auth-section');
 const chatSection = document.getElementById('chat-section');
 const nameInput = document.getElementById('name');
@@ -47,46 +45,125 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const userNameSpan = document.getElementById('user-name');
+const searchInput = document.getElementById('search-input');
+const darkModeToggle = document.getElementById('dark-mode-toggle');
+const exportChatBtn = document.getElementById('export-chat');
+const onlineUsersSpan = document.getElementById('online-users');
+const typingIndicator = document.getElementById('typing-indicator');
 
-// متغیرهای reply
-let currentReplyTo = null;  // {id: messageId, name: senderName}
+// متغیرهای reply و ادمین
+let currentReplyTo = null;
 let messagesListener = null;
+let typingListeners = {};
+let isAdmin = false;
+let currentUser = null;
+let bannedUsers = {};
 
-// setup listener پیام‌ها (با reply و thread)
+// تایپینگ indicator
+function updateTypingIndicator(typingUsers) {
+    if (typingUsers.length > 0) {
+        typingIndicator.textContent = `${typingUsers.join(', ')} داره تایپ می‌کنه...`;
+        typingIndicator.style.display = 'block';
+    } else {
+        typingIndicator.style.display = 'none';
+    }
+}
+
+// listener تایپینگ
+function setupTypingListener() {
+    const userRef = database.ref(`presence/${currentUser.uid}`);
+    let typingTimer;
+    messageInput.addEventListener('input', () => {
+        userRef.set({ typing: true, timestamp: firebase.database.ServerValue.TIMESTAMP });
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            userRef.set({ typing: false });
+        }, 2000);
+    });
+
+    database.ref('presence').on('value', (snapshot) => {
+        const typingUsers = [];
+        const now = Date.now();
+        snapshot.forEach((child) => {
+            const data = child.val();
+            if (data.typing && (now - data.timestamp) < 2000) {
+                database.ref(`users/${child.key}`).once('value').then((snap) => {
+                    if (snap.exists()) {
+                        typingUsers.push(snap.val().name);
+                        updateTypingIndicator([...new Set(typingUsers)]);  // unique
+                    }
+                });
+            }
+        });
+        if (typingUsers.length === 0) updateTypingIndicator([]);
+    });
+}
+
+// آنلاین کاربران
+function setupOnlineUsers() {
+    const userRef = database.ref(`online/${currentUser.uid}`);
+    userRef.set(true).onDisconnect().remove();
+
+    database.ref('online').on('value', (snapshot) => {
+        const count = snapshot.numChildren();
+        onlineUsersSpan.textContent = `کاربران آنلاین: ${count}`;
+    });
+}
+
+// چک ادمین
+function checkAdmin(user) {
+    currentUser = user;
+    if (user.email === 'admin@example.com') {  // عوض کن با ایمیل خودت
+        isAdmin = true;
+        database.ref('admins').child(user.uid).set({ role: 'admin' });
+    } else {
+        database.ref('admins/' + user.uid).once('value').then((snap) => {
+            isAdmin = snap.exists();
+        });
+    }
+    userNameSpan.innerHTML = (user.displayName || 'کاربر');
+    if (isAdmin) userNameSpan.innerHTML += ' <span class="badge bg-danger">ادمین</span>';
+}
+
+// setup listener پیام‌ها (با حذف برای ادمین، بن چک)
 function setupMessagesListener() {
     if (messagesListener) database.ref('messages').off('child_added', messagesListener);
     messagesListener = database.ref('messages').on('child_added', (snapshot) => {
         const msg = snapshot.val();
         const msgId = snapshot.key;
+        if (bannedUsers[msg.name]) return;  // اگر بن شده، نمایش نده
+
         const div = document.createElement('div');
         div.className = 'message';
-        div.setAttribute('data-id', msgId);  // برای highlight
+        div.setAttribute('data-id', msgId);
         const isReply = msg.parentId;
         const indentClass = isReply ? 'reply-thread' : '';
-        div.innerHTML = `
+        let html = `
             <div class="${indentClass}">
                 <strong>${msg.name}:</strong> ${msg.text} 
                 <small>(${msg.timestamp})</small>
                 <button class="btn btn-sm btn-outline-secondary reply-btn" data-id="${msgId}" data-name="${msg.name}">پاسخ</button>
-            </div>
         `;
+        if (isAdmin) {
+            html += `<button class="btn btn-sm btn-outline-danger delete-btn" data-id="${msgId}">حذف</button>
+                     <button class="btn btn-sm btn-outline-warning ban-btn" data-name="${msg.name}">بن</button>`;
+        }
+        html += '</div>';
+        div.innerHTML = html;
         messagesDiv.appendChild(div);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-        // event listener برای دکمه reply
+        // event reply
         const replyBtn = div.querySelector('.reply-btn');
         replyBtn.addEventListener('click', () => {
-            // پاک کردن highlight قبلی
             if (currentReplyTo) {
-                const prevReplyDiv = document.querySelector(`[data-id="${currentReplyTo.id}"]`);
-                if (prevReplyDiv) prevReplyDiv.classList.remove('highlighted');
+                const prevDiv = document.querySelector(`[data-id="${currentReplyTo.id}"]`);
+                if (prevDiv) prevDiv.classList.remove('highlighted');
             }
             currentReplyTo = { id: msgId, name: msg.name };
             messageInput.placeholder = `پاسخ به ${msg.name}...`;
             messageInput.focus();
-            div.classList.add('highlighted');  // highlight این پیام
-
-            // دکمه لغو
+            div.classList.add('highlighted');
             if (!document.getElementById('cancel-reply')) {
                 const cancelBtn = document.createElement('button');
                 cancelBtn.id = 'cancel-reply';
@@ -101,8 +178,76 @@ function setupMessagesListener() {
                 sendBtn.parentNode.insertBefore(cancelBtn, sendBtn.nextSibling);
             }
         });
+
+        // حذف پیام (ادمین)
+        if (isAdmin) {
+            const deleteBtn = div.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', () => {
+                if (confirm('حذف پیام؟')) {
+                    database.ref('messages/' + msgId).remove();
+                }
+            });
+
+            // بن کاربر
+            const banBtn = div.querySelector('.ban-btn');
+            banBtn.addEventListener('click', () => {
+                if (confirm('بن کاربر ' + msg.name + '؟')) {
+                    database.ref('banned/' + msg.name).set(true);
+                    bannedUsers[msg.name] = true;
+                    // حذف پیام‌های بن‌شده
+                    document.querySelectorAll('.message').forEach(el => {
+                        if (el.textContent.includes(msg.name + ':')) el.remove();
+                    });
+                }
+            });
+        }
     });
 }
+
+// جستجو
+searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    messagesDiv.querySelectorAll('.message').forEach(msg => {
+        const text = msg.textContent.toLowerCase();
+        if (query && text.includes(query)) {
+            msg.classList.add('search-highlight');
+        } else {
+            msg.classList.remove('search-highlight');
+        }
+    });
+});
+
+// دارک مود
+darkModeToggle.addEventListener('change', () => {
+    document.body.classList.toggle('dark');
+    document.querySelectorAll('.card, .chat-messages').forEach(el => el.classList.toggle('dark'));
+    localStorage.setItem('darkMode', darkModeToggle.checked);
+});
+
+// لود دارک مود
+if (localStorage.getItem('darkMode') === 'true') {
+    darkModeToggle.checked = true;
+    document.body.classList.add('dark');
+    document.querySelectorAll('.card, .chat-messages').forEach(el => el.classList.add('dark'));
+}
+
+// export چت (ادمین)
+exportChatBtn.addEventListener('click', () => {
+    if (!isAdmin) return alert('فقط ادمین می‌تونه دانلود کنه');
+    database.ref('messages').once('value').then((snapshot) => {
+        let chatText = '';
+        snapshot.forEach((child) => {
+            const msg = child.val();
+            chatText += `${msg.name}: ${msg.text} (${msg.timestamp})\n`;
+        });
+        const blob = new Blob([chatText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'chat.txt';
+        a.click();
+    });
+});
 
 // ثبت‌نام
 signupBtn.addEventListener('click', () => {
@@ -114,8 +259,9 @@ signupBtn.addEventListener('click', () => {
     auth.createUserWithEmailAndPassword(email, password)
         .then((userCredential) => {
             userCredential.user.updateProfile({ displayName: name });
-            database.ref('users/' + userCredential.user.uid).set({ name: name });
+            database.ref('users/' + userCredential.user.uid).set({ name: name, email: email });
             errorMsg.textContent = '';
+            checkAdmin(userCredential.user);
             showChat(userCredential.user);
         })
         .catch((error) => errorMsg.textContent = translateError(error));
@@ -130,34 +276,38 @@ loginBtn.addEventListener('click', () => {
     auth.signInWithEmailAndPassword(email, password)
         .then((userCredential) => {
             errorMsg.textContent = '';
+            checkAdmin(userCredential.user);
             showChat(userCredential.user);
         })
         .catch((error) => errorMsg.textContent = translateError(error));
 });
 
-// نمایش بخش چت
+// showChat
 function showChat(user) {
     authSection.style.display = 'none';
     chatSection.style.display = 'block';
-    userNameSpan.textContent = user.displayName || 'کاربر';
     messagesDiv.innerHTML = '';
     currentReplyTo = null;
     messageInput.placeholder = 'پیام خود را بنویسید...';
     const cancelBtn = document.getElementById('cancel-reply');
     if (cancelBtn) cancelBtn.remove();
     setupMessagesListener();
+    setupTypingListener();
+    setupOnlineUsers();
+    // لود بن‌ها
+    database.ref('banned').once('value').then((snap) => {
+        bannedUsers = snap.val() || {};
+    });
 }
 
-// ارسال پیام (با reply)
+// ارسال
 sendBtn.addEventListener('click', () => {
+    if (bannedUsers[currentUser.displayName]) return alert('شما بن شدید!');
     const text = messageInput.value.trim();
     if (!text) return;
 
-    const user = auth.currentUser;
-    if (!user) return errorMsg.textContent = 'لطفاً وارد شوید';
-
     const messageData = {
-        name: user.displayName,
+        name: currentUser.displayName,
         text: text,
         timestamp: new Date().toLocaleString('fa-IR'),
         parentId: currentReplyTo ? currentReplyTo.id : null
@@ -170,7 +320,6 @@ sendBtn.addEventListener('click', () => {
             messageInput.placeholder = 'پیام خود را بنویسید...';
             const cancelBtn = document.getElementById('cancel-reply');
             if (cancelBtn) cancelBtn.remove();
-            // پاک کردن highlightها
             document.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
         })
         .catch((error) => {
@@ -187,19 +336,21 @@ logoutBtn.addEventListener('click', () => {
     auth.signOut().then(() => {
         authSection.style.display = 'block';
         chatSection.style.display = 'none';
-        if (messagesListener) {
-            database.ref('messages').off('child_added', messagesListener);
-            messagesListener = null;
-        }
+        if (messagesListener) database.ref('messages').off('child_added', messagesListener);
+        messagesListener = null;
         messagesDiv.innerHTML = '';
         errorMsg.textContent = '';
         currentReplyTo = null;
+        isAdmin = false;
+        currentUser = null;
+        bannedUsers = {};
     });
 });
 
-// چک کردن وضعیت لاگین
+// onAuthStateChanged
 auth.onAuthStateChanged((user) => {
     if (user) {
+        checkAdmin(user);
         showChat(user);
     } else {
         authSection.style.display = 'block';
